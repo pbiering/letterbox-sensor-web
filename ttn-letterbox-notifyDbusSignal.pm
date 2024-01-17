@@ -34,7 +34,7 @@
 #
 # Optional configuration:
 #   - control debug
-#       notifyDbusSignal.enable=1
+#       notifyDbusSignal.debug=1
 #
 # Honors entries starting with "signal=" from "@notify_list" provided by main CGI
 #
