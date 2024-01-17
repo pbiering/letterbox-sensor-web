@@ -46,6 +46,7 @@
 # 20220218/bie: remove support of debug option by environment
 # 20220421/bie: return earlier from notifyDbusSignal_init when not enabled
 # 20220424/bie: use hardcoded binary /usr/bin/dbus-send to avoid insecure $ENV{PATH} in tainted mode
+# 20240117/bie: expand and suppress "no related entry found" in case of disabled debug
 
 use strict;
 use warnings;
@@ -158,7 +159,7 @@ sub notifyDbusSignal_store_data($$$) {
     logging("notifyDbusSignal/store_data: notification list filtered: " . join(' ', @notify_list_filtered)) if defined $config{'notifyDbusSignal.debug'};
 
     if (scalar(@notify_list_filtered) == 0) {
-      logging("notifyDbusSignal/store_data: no related entry found in notification list");
+      logging("notifyDbusSignal/store_data: no related entry found in notification list for sensor $dev_id") if defined $config{'notifyDbusSignal.debug'};
       return 0;
     };
 
