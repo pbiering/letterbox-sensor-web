@@ -308,7 +308,7 @@ sub statistics_xpm_create($$) {
 	};
 
   # reset infostore
-	statistics_set_infostore($i, 0);
+	statistics_set_infostore($i, undef);
 
 	$i->save($file);
 
@@ -317,12 +317,13 @@ sub statistics_xpm_create($$) {
 
 
 ## update XPM
-sub statistics_xpm_update($$$$;$) {
+sub statistics_xpm_update($$$$;$$) {
   my $file = $_[0];
   my $type = $_[1];
   my $value = $_[2];
   my $data = $_[3];
   my $i = $_[4];
+  my $flag = $_[5]; # 1: init
 
   # get values
   my $xmax = $statistics_sizes{$type}->{'xmax'};
@@ -340,6 +341,12 @@ sub statistics_xpm_update($$$$;$) {
 
   my $value_stored = statistics_get_infostore($i);
 
+  if (! defined $value_stored) {
+    # bootstrap for fresh file
+    $value_stored = 0;
+    statistics_set_infostore($i, $value_stored);
+  };
+
   if ($type eq "receivedstatus") {
     if (defined $value) {
       if ($value - 1 != $value_stored) {
@@ -353,14 +360,16 @@ sub statistics_xpm_update($$$$;$) {
       $i->xy($lborder + ($value % $xmax), $tborder + (int($value / $xmax) % $ymax), $color_receivestatus_ok);
       statistics_set_infostore($i, $value);
 
+      unless (defined $flag) {
+        # clear at least next 5 lines
+        for (my $g = $value + 1; $g < $value + $xmax * 3; $g++) {
+          $i->xy($lborder + ($g % $xmax), $tborder + (int($g / $xmax) % $ymax), $color_clear);
+        };
+      };
+
       logging("statistics: stored=" . $value_stored . " new=" . $value) if defined $config{'statistics.debug'};
     } else {
       logging("statistics: stored=" . $value_stored . " (nothing to do)") if defined $config{'statistics.debug'};
-    };
-
-    # clear at least next 5 lines
-    for (my $g = $value + 1; $g < $value + $xmax * 3; $g++) {
-        $i->xy($lborder + ($g % $xmax), $tborder + (int($g / $xmax) % $ymax), $color_clear);
     };
   } elsif ($type eq "boxstatus") {
     my $div = 60 * 15; # 15 min
@@ -397,11 +406,17 @@ sub statistics_xpm_update($$$$;$) {
 };
 
 
-###(pixel in picture)
-## store data into infostore
+### infostore by pixels in picture
+## store 32-bit data into infostore
 sub statistics_set_infostore($$) {
   my $i = shift;
-  my $value = shift || 0;
+  my $value = shift;
+
+  if (! defined $value) {
+    # clear "valid" flag in bit 33
+    $i->xy(33, 0, $colors_infostore_set{'0'});
+    return;
+  };
 
   for (my $b = 0; $b < 32; $b++) {
     if (($value & 0x1) == 1) {
@@ -411,10 +426,13 @@ sub statistics_set_infostore($$) {
     };
     $value >>= 1;
   };
+
+  # store "valid" flag in bit 33
+  $i->xy(33, 0, $colors_infostore_set{'1'});
 };
 
 
-## get data from infostore (pixel in picture)
+## get 32-bit data from infostore
 sub statistics_get_infostore($;$) {
   my $i = $_[0];
   my $file = $_[1]; # optional
@@ -433,6 +451,12 @@ sub statistics_get_infostore($;$) {
     };
     $bit <<= 1;
   };
+
+  # check "valid" flag in bit 33
+  if ($i->xy(33, 0) ne $colors_infostore_set{'1'}) {
+    $value = undef;
+  };
+
   return $value;
 };
 
@@ -459,15 +483,21 @@ sub statistics_fill_device($$$) {
   # read directory
   my $dir = $config{'datadir'};
   opendir (DIR, $dir) or die $!;
-  while (my $entry = readdir(DIR)) {
+  foreach my $entry (sort readdir(DIR)) {
     next unless (-f "$dir/$entry");
     next unless ($entry =~ /^ttn\.$dev_id\.[0-9]+\.raw.log$/);
     logging("DEBUG : logfile found: " . $entry) if defined $config{'statistics.debug'};
     push @logfiles, $entry;
   };
 
+  my @logfiles_sorted = @logfiles;
+
+  # only last n days of log
+  my $n = 90;
+  @logfiles = ($n >= @logfiles_sorted) ? @logfiles_sorted : @logfiles_sorted[-$n..-1];
+
   # get data from logfiles
-  foreach my $logfile (sort @logfiles) {
+  foreach my $logfile (@logfiles) {
     open LOGF, '<', $dir . "/" . $logfile or die $!;
 		while (<LOGF>) {
 			my $line = $_;
@@ -516,6 +546,7 @@ sub statistics_fill_device($$$) {
   # store data from logfiles in xpm
   my $box_last = "empty"; # initial
   my $box;
+  my $value_last;
 
 	for my $value (sort { $a <=> $b } keys %values) {
     if ($type eq "boxstatus") {
@@ -561,14 +592,20 @@ sub statistics_fill_device($$$) {
       } else {
         logging("statistic: value=" . $value . " sensor=" . $values{$value}->{'sensor'} . " box_orig=" . $values{$value}->{'box'} . " box=". $box . " box_last=" . $box_last) if defined $config{'statistics.debug'};
       };
+    } elsif ($type eq "receivedstatus") {
+      $value = $values{$value};
     };
 
-    statistics_xpm_update(undef, $type, $value, $box, $i);
+    statistics_xpm_update(undef, $type, $value, $box, $i, 1);
+    $value_last = $value;
 
     if ($type eq "boxstatus") {
       $box_last = $box;
     };
 	};
+
+  # clear following lines only by updating same value again
+  statistics_xpm_update(undef, $type, $value_last, $box, $i, undef);
 
   # finally save
   $i->save;
@@ -593,7 +630,7 @@ sub statistics_init_device($) {
     };
 
     my $value = statistics_get_infostore(undef, $file);
-    if ($value == 0) {
+    if (! defined $value) {
       logging("DEBUG : file already existing but empty: " . $file) if defined $config{'statistics.debug'};
       statistics_fill_device($dev_id, $file, $type);
     } else {
