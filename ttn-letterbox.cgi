@@ -1,16 +1,20 @@
 #!/usr/bin/perl -w -T
 #
-# TheThingsNetwork HTTP integration for letter box sensor
+# TheThingsNetwork HTTP integration for letterbox-sensor (v1+v2)
 # - receives payload via POST from TTN
-# - serves a small web page with status of letter box sensor(s)
+# - serves a small web page with status of letterbox sensor(s)
 #   - directly called CGI
 #   - included with SSI
+#
+# See also
+#  https://github.com/hierle/letterbox-sensor
+#  https://github.com/hierle/letterbox-sensor-v2
 #
 # Initial:
 # (P) & (C) 2019-2019 Alexander Hierle <alex@hierle.com>
 #
 # Major extensions:
-# (P) & (C) 2019-2022 Dr. Peter Bieringer <pb@bieringer.de>
+# (P) & (C) 2019-2024 Dr. Peter Bieringer <pb@bieringer.de>
 #
 # License: GPLv3
 #
@@ -19,7 +23,7 @@
 #
 #
 # Compatibility of letterbox-sensor
-#   - supports version 1 sending "full" / "empty"
+#   - supports version 1+2 sending "full" / "empty"
 #   - supports planned future version sending also "emptied" / "filled"
 #
 # Preparation
@@ -140,6 +144,8 @@
 # 20220417/bie: extend query string=value pattern check
 # 20220422/bie: add support for options (used for local testing/debugging)
 # 20220424/bie: clean query string from URI in response if refresh_delay is given (e.g. logout)
+# 20230923/bie: set counter to 0 in case neither 'counter' nor 'f_cnt' is set
+# 20240117/bie: add support for letterbox-sensor-v2
 #
 # TODO:
 # - lock around file writes
@@ -239,12 +245,14 @@ my $reqm = $ENV{'REQUEST_METHOD'};
 
 # payload validator
 my %payload_validator = (
-  'box' => '(full|empty|filled|emptied)',
-  'sensor' => '[0-9]+',
-  'temp' => '[0-9]+',
-  'tempC' => '[0-9-]+',
-  'threshold' => '[0-9]+',
-  'voltage' => '[0-9.]+',
+  'box'       => { 'pattern' => '(full|empty|filled|emptied)', 'required' => 1 }, # mandatory (v1+v2)
+  'sensor1'   => { 'pattern' => '[0-9.]+', 'required' => 0 }, # new in v2
+  'sensor2'   => { 'pattern' => '[0-9.]+', 'required' => 0 }, # new in v2
+  'sensor'    => { 'pattern' => '[0-9.]+', 'required' => 1 }, # only in v1, will be filled with max(sensor1,sensor2) in v2
+  'temp'      => { 'pattern' => '[0-9.]+', 'required' => 1 }, # n/a in v2 but will be filled with dummy value
+  'tempC'     => { 'pattern' => '[0-9.]+', 'required' => 1 }, # n/a in v2 but will be filled with dummy value
+  'threshold' => { 'pattern' => '[0-9.]+', 'required' => 1 }, # mandatory (v1+v2)
+  'voltage'   => { 'pattern' => '[0-9.]+', 'required' => 1 }, # mandatory (v1+v2)
 );
 
 # details depending on detail level
@@ -670,13 +678,32 @@ sub req_post() {
     exit;
   };
 
+  ## letterbox-sensor-v2 handling
+  # v2 has 2 sensors, highest value has precedence
+  if (defined $payload->{'sensor1'} && defined $payload->{'sensor2'}) {
+    $payload->{'sensor'} = $payload->{'sensor1'};
+    $payload->{'sensor'} = $payload->{'sensor2'} if $payload->{'sensor2'} > $payload->{'sensor1'};
+    logging("POST/payload 'sensor' aggregated from 'sensor1' & 'sensor2' (new capability of letterbox-sensor-v2)") if ($config{'debug'} > 1);
+  };
+  # v2 has no temperature sensor so far, preset with 0
+  if (!defined $payload->{'temp'}) {
+    logging("POST/payload 'temp' preset to 0 (missing support in letterbox-sensor-v2)") if ($config{'debug'} > 1);
+    $payload->{'temp'} = 0;
+  };
+  if (!defined $payload->{'tempC'}) {
+    logging("POST/payload 'temp' preset to 0 (missing support in letterbox-sensor-v2)") if ($config{'debug'} > 1);
+    $payload->{'tempC'} = 0 ;
+  };
+
   for my $key (keys %payload_validator) {
     if (!defined $payload->{$key}) {
-      response(500, "unsupported POST data", "", "POST request does contain valid JSON but payload is missing '$key'");
-      exit;
+      if ($payload_validator{$key}->{'required'} == 1) {
+        response(500, "unsupported POST data", "", "POST request does contain valid JSON but required payload is missing '$key'");
+        exit;
+      };
     };
 
-    if ($payload->{$key} !~ /^$payload_validator{$key}$/) {
+    if ($payload->{$key} !~ /^$payload_validator{$key}->{'pattern'}$/) {
       response(500, "unsupported POST data", "", "POST request does contain valid JSON but payload key '$key' contains invalid content '$payload->{$key}'");
       exit;
     };
@@ -1025,6 +1052,14 @@ sub req_get() {
     my $payload_last;
     $payload_last = $content->{'uplink_message'}->{'decoded_payload'}; # v3 (default)
     $payload_last = $content->{'payload_fields'} if (! defined $payload_last); # v2 (fallback)
+
+    ## letterbox-sensor-v2 handling
+    # v2 has 2 sensors, highest value has precedence
+    if (defined $payload_last->{'sensor1'} && defined $payload_last->{'sensor2'}) {
+      $payload_last->{'sensor'} = $payload_last->{'sensor1'};
+      $payload_last->{'sensor'} = $payload_last->{'sensor2'} if $payload_last->{'sensor2'} > $payload_last->{'sensor1'};
+    };
+
     my $sensor = $payload_last->{'sensor'};
     my $threshold = $payload_last->{'threshold'};
     my $voltage = $payload_last->{'voltage'};
