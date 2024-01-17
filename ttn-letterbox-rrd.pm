@@ -1,8 +1,12 @@
 #!/bin/perl -w -T
 #
-# TheThingsNetwork HTTP letter box sensor RRD extension
+# TheThingsNetwork HTTP letterbox-sensor RRD extension
 #
-# (P) & (C) 2019-2022 Dr. Peter Bieringer <pb@bieringer.de>
+# See also
+#  https://github.com/hierle/letterbox-sensor
+#  https://github.com/hierle/letterbox-sensor-v2
+#
+# (P) & (C) 2019-2024 Dr. Peter Bieringer <pb@bieringer.de>
 #
 # License: GPLv3
 #
@@ -54,6 +58,7 @@
 # 20220402/bie: activate change of shift/zoom text color in case not default
 # 20220404/bie: display RRDs for 'rssi', 'snr', 'voltage', 'tempC', 'sensor-zoom-empty' only in case of "details" != "off"
 # 20220415/bie: display RRDs for 'rssi', 'snr', 'tempC' only in case of "details" != "l1" || "off"
+# 20240117/bie: add support for letterbox-sensor-v2, add support for rrd.sensor-zoom-empty.dev.<device>.(min|max)
 
 use strict;
 use warnings;
@@ -301,6 +306,13 @@ sub rrd_fill_device($$) {
       my $payload;
       $payload = $content->{'uplink_message'}->{'decoded_payload'}; # v3 (default)
       $payload = $content->{'payload_fields'} if (! defined $payload); # v2 (fallback)
+
+      ## letterbox-sensor-v2 handling
+      # v2 has 2 sensors, highest value has precedence
+      if (defined $payload->{'sensor1'} && defined $payload->{'sensor2'}) {
+        $payload->{'sensor'} = $payload->{'sensor1'};
+        $payload->{'sensor'} = $payload->{'sensor2'} if $payload->{'sensor2'} > $payload->{'sensor1'};
+      };
 
       $values{$timeReceived_ut}->{'voltage'} = $payload->{'voltage'};
       $values{$timeReceived_ut}->{'sensor'} = $payload->{'sensor'};
