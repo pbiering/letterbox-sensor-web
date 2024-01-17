@@ -23,8 +23,12 @@
 #   - control debug
 #       rrd.debug=1
 #   - sensor-zoom-empty graph
-#       rrd.sensor-zoom-empty.min
-#       rrd.sensor-zoom-empty.max
+#      global
+#       rrd.sensor-zoom-empty.min (default: 0)
+#       rrd.sensor-zoom-empty.max (default: 20)
+#      per device (optional)
+#       rrd.sensor-zoom-empty.dev.<device>.max
+#       rrd.sensor-zoom-empty.dev.<device>.min
 #
 # Notes:
 #   - because of nature of RRD implementation, 1 missed/broken update by sensor results in 3 N/A entries in RRD
@@ -536,9 +540,16 @@ sub rrd_get_graphics($$$) {
           my $min = $config{'rrd.sensor-zoom-empty.min'} || 0;
           my $max = $config{'rrd.sensor-zoom-empty.max'} || 20;
 
+          if (defined $config{'rrd.sensor-zoom-empty.dev.' . $dev_id . '.min'}) {
+            $min = $config{'rrd.sensor-zoom-empty.dev.' . $dev_id . '.min'};
+          };
+          if (defined $config{'rrd.sensor-zoom-empty.dev.' . $dev_id . '.max'}) {
+            $max = $config{'rrd.sensor-zoom-empty.dev.' . $dev_id . '.max'};
+          };
+
           push @rrd_opts, "--lower-limit=" . $min;
           push @rrd_opts, "--upper-limit=" . $max;
-          push @rrd_opts, "--y-grid=1:2";
+          push @rrd_opts, "--y-grid=1:" . int(($max - $min) / 5);
           push @rrd_opts, "--rigid";
         };
 
