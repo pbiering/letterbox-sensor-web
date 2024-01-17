@@ -1091,6 +1091,7 @@ sub req_get() {
     $dev_hash{$dev_id}->{'info'}->{'voltage'} = $voltage;
     $dev_hash{$dev_id}->{'info'}->{'rssi'} = $rssi;
     $dev_hash{$dev_id}->{'info'}->{'snr'} = $snr;
+    $dev_hash{$dev_id}->{'info'}->{'counter'} = 0; # default in case neither 'counter' nor 'f_cnt' is set
     $dev_hash{$dev_id}->{'info'}->{'counter'} = $content->{'counter'} if defined ($content->{'counter'}); # v2
     $dev_hash{$dev_id}->{'info'}->{'counter'} = $content->{'uplink_message'}->{'f_cnt'} if defined ($content->{'uplink_message'}->{'f_cnt'}); # v3
     $dev_hash{$dev_id}->{'info'}->{'hardwareSerial'} = $hardware_serial;
