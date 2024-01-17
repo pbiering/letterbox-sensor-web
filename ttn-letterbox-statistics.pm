@@ -618,9 +618,9 @@ sub statistics_store_data($$$) {
   $payload = $content->{'uplink_message'}->{'decoded_payload'}; # v3 (default)
   $payload = $content->{'payload_fields'} if (! defined $payload); # v2 (fallback)
 
-  my $counter;
-  $counter = $content->{'uplink_message'}->{'f_cnt'}; # v3 (default)
-  $counter = $content->{'counter'} if (! defined $counter); # v2 (fallback)
+  my $counter = 0;
+  $counter = $content->{'counter'} if (defined $content->{'counter'}); # v2
+  $counter = $content->{'uplink_message'}->{'f_cnt'} if (defined $content->{'uplink_message'}->{'f_cnt'}); # v3
 
   for my $type (@statistics) {
     my $file = $config{'datadir'} . "/ttn." . $dev_id . "." . $type . ".xpm";
