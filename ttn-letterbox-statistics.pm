@@ -1,8 +1,12 @@
 #!/bin/perl -w -T
 #
-# TheThingsNetwork HTTP letter box sensor statistics extension
+# TheThingsNetwork HTTP letterbox-sensor statistics extension
 #
-# (P) & (C) 2019-2022 Dr. Peter Bieringer <pb@bieringer.de>
+# See also
+#  https://github.com/hierle/letterbox-sensor
+#  https://github.com/hierle/letterbox-sensor-v2
+#
+# (P) & (C) 2019-2024 Dr. Peter Bieringer <pb@bieringer.de>
 #
 # License: GPLv3
 #
@@ -45,6 +49,8 @@
 # 20220329/bie: change timestamp from UTC to localtime
 # 20220331/bie: align button sizes
 # 20220404/bie: display 'receivedstatus' only in case of "details" != "off"
+# 20230926/bie: set counter to 0 in case neither 'counter' nor 'f_cnt' is set
+# 20240117/bie: add support for letterbox-sensor-v2 (and status update < 30 min)
 
 use strict;
 use warnings;
@@ -378,18 +384,31 @@ sub statistics_xpm_update($$$$;$$) {
 
       my $value_mod = int($value / $div);
 
-      $i->xy($lborder + ($value_mod % $xmax), $tborder + (int($value_mod / $xmax) % $ymax), $color);
-
-      if (($value_stored > 0) && ($value_mod -1 > $value_stored)) {
-        # fill gaps
-        for (my $g = $value_stored + 1; $g < $value_mod; $g++) {
-          $i->xy($lborder + ($g % $xmax), $tborder + (int($g / $xmax) % $ymax), $color);
+      for (my $c = 0; $c < 5; $c++) {
+        if ($i->xy($lborder + ($value_mod % $xmax), $tborder + (int($value_mod / $xmax) % $ymax)) eq $color_clear) {
+          last;
+        } else {
+          # do not overwrite existing status, try +1 instead
+          $value_mod++;
         };
       };
 
-      # clear at least next 5 lines
-      for (my $g = $value_mod + 1; $g < $value_mod + $xmax * 3; $g++) {
-          $i->xy($lborder + ($g % $xmax), $tborder + (int($g / $xmax) % $ymax), $color_clear);
+      $i->xy($lborder + ($value_mod % $xmax), $tborder + (int($value_mod / $xmax) % $ymax), $color);
+
+      if (($value_stored > 0) && ($value_mod - 1 > $value_stored)) {
+        # fill gaps
+        for (my $g = $value_stored + 1; $g < $value_mod; $g++) {
+          if ($i->xy($lborder + ($g % $xmax), $tborder + (int($g / $xmax) % $ymax)) eq $color_clear) {
+            $i->xy($lborder + ($g % $xmax), $tborder + (int($g / $xmax) % $ymax), $color);
+          };
+        };
+      };
+
+      unless (defined $flag) {
+        # clear at least next 5 lines
+        for (my $g = $value_mod + 1; $g < $value_mod + $xmax * 3; $g++) {
+            $i->xy($lborder + ($g % $xmax), $tborder + (int($g / $xmax) % $ymax), $color_clear);
+        };
       };
 
       statistics_set_infostore($i, $value_mod);
@@ -513,23 +532,32 @@ sub statistics_fill_device($$$) {
       $payload = $content->{'uplink_message'}->{'decoded_payload'}; # v3 (default)
       $payload = $content->{'payload_fields'} if (! defined $payload); # v2 (fallback)
 
-      my $counter;
-      $counter = $content->{'uplink_message'}->{'f_cnt'}; # v3 (default)
-      $counter = $content->{'counter'} if (! defined $counter); # v2 (fallback)
+      ## letterbox-sensor-v2 handling
+      # v2 has 2 sensors, highest value has precedence
+      if (defined $payload->{'sensor1'} && defined $payload->{'sensor2'}) {
+        $payload->{'sensor'} = $payload->{'sensor1'};
+        $payload->{'sensor'} = $payload->{'sensor2'} if $payload->{'sensor2'} > $payload->{'sensor1'};
+      };
+
+      my $counter = 0;
+      $counter = $content->{'counter'} if (defined $content->{'counter'}); # v2
+      $counter = $content->{'uplink_message'}->{'f_cnt'} if (defined $content->{'uplink_message'}->{'f_cnt'}); # v3
+
+      my $timeReceived_ut = str2time($timeReceived);
+      if (! defined $timeReceived_ut) {
+        die("cannot parse time: " . $timeReceived);
+      };
 
 			if ($type eq "receivedstatus") {
 				if (! defined $counter) {
 					die("major problem found", "", "JSON don't contain 'counter'");
 				};
-				$values{$counter} = 1;
+
+				$values{$timeReceived_ut} = $counter;
 
 			} elsif ($type eq "boxstatus")  {
 				if (! defined $payload->{'box'}) {
 					die("major problem found", "", "JSON don't contain 'box'");
-				};
-				my $timeReceived_ut = str2time($timeReceived);
-				if (! defined $timeReceived_ut) {
-					die("cannot parse time: " . $timeReceived);
 				};
 
         $values{$timeReceived_ut}->{'box'} = $payload->{'box'};
