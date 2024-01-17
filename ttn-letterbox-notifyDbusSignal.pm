@@ -2,7 +2,7 @@
 #
 # TheThingsNetwork HTTP letter box sensor notification to "Signal" (via D-Bus)
 #
-# (P) & (C) 2021-2022 Dr. Peter Bieringer <pb@bieringer.de>
+# (P) & (C) 2021-2024 Dr. Peter Bieringer <pb@bieringer.de>
 #
 # License: GPLv3
 #
@@ -15,12 +15,11 @@
 #       - https://github.com/AsamK/signal-cli/wiki/Provide-native-lib-for-libsignal
 #
 #     successfully tested:
-#       EL8 / 0.7.4:
-#         https://github.com/AsamK/signal-cli/releases/tag/v0.7.4
+#       EL8 / 0.12.0
+#         https://github.com/pbiering/signal-cli-rpm
 #
-#       EL8 / 0.10.4.2:
-#         https://github.com/AsamK/signal-cli/releases/tag/v0.10.4.2
-#         https://github.com/exquo/signal-libs-build/releases/tag/libsignal-client_v0.14.0
+#       EL9 / 0.12.0
+#         https://github.com/pbiering/signal-cli-rpm
 #
 # Required configuration:
 #   - enable sending messages (otherwise dry-run)
