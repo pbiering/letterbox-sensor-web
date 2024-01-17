@@ -1,7 +1,11 @@
-# LoRaWan Letterbox Sensor HTTP integration and Web UI
+# LoRaWan Letterbox-Sensor HTTP integration and WebUI
 `ttn-letterbox.cgi` is a Perl-based CGI script which serves
 - HTTP integration triggered from TTN
 - Web UI
+
+See also
+- https://github.com/hierle/letterbox-sensor
+- https://github.com/hierle/letterbox-sensor-v2
 
 ## Prerequisites
 
