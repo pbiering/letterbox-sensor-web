@@ -1063,7 +1063,7 @@ sub req_get() {
     if (defined $emptiedtime_ut) {
       $dev_hash{$dev_id}->{'info'}->{'timeLastEmptied'} = strftime("%Y-%m-%d %H:%M:%S %Z", localtime($emptiedtime_ut));
       $dev_hash{$dev_id}->{'values'}->{'timeLastEmptied'} = $emptiedtime_ut;
-      if ($emptiedtime_ut > $timeLastChange) {
+      if (defined $timeLastChange && $emptiedtime_ut > $timeLastChange) {
         # only overwrite if > $filledtime_ut
         $timeLastChange = $emptiedtime_ut;
       };
