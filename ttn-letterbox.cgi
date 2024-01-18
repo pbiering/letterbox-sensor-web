@@ -701,7 +701,7 @@ sub req_post() {
         response(500, "unsupported POST data", "", "POST request does contain valid JSON but required payload is missing '$key'");
         exit;
       } else {
-        continue;
+        next;
       };
     };
 
