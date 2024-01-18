@@ -246,12 +246,12 @@ my $reqm = $ENV{'REQUEST_METHOD'};
 # payload validator
 my %payload_validator = (
   'box'       => { 'pattern' => '(full|empty|filled|emptied)', 'required' => 1 }, # mandatory (v1+v2)
-  'sensor1'   => { 'pattern' => '[0-9.]+', 'required' => 0 }, # new in v2
-  'sensor2'   => { 'pattern' => '[0-9.]+', 'required' => 0 }, # new in v2
-  'sensor'    => { 'pattern' => '[0-9.]+', 'required' => 1 }, # only in v1, will be filled with max(sensor1,sensor2) in v2
-  'temp'      => { 'pattern' => '[0-9.]+', 'required' => 1 }, # n/a in v2 but will be filled with dummy value
-  'tempC'     => { 'pattern' => '[0-9.]+', 'required' => 1 }, # n/a in v2 but will be filled with dummy value
-  'threshold' => { 'pattern' => '[0-9.]+', 'required' => 1 }, # mandatory (v1+v2)
+  'sensor1'   => { 'pattern' => '[0-9]+' , 'required' => 0 }, # new in v2
+  'sensor2'   => { 'pattern' => '[0-9]+' , 'required' => 0 }, # new in v2
+  'sensor'    => { 'pattern' => '[0-9]+' , 'required' => 1 }, # only in v1, will be filled with max(sensor1,sensor2) in v2
+  'temp'      => { 'pattern' => '[0-9]+' , 'required' => 1 }, # n/a in v2 but will be filled with dummy value
+  'tempC'     => { 'pattern' => '[0-9-]+', 'required' => 1 }, # n/a in v2 but will be filled with dummy value
+  'threshold' => { 'pattern' => '[0-9]+' , 'required' => 1 }, # mandatory (v1+v2)
   'voltage'   => { 'pattern' => '[0-9.]+', 'required' => 1 }, # mandatory (v1+v2)
 );
 
