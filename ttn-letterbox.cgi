@@ -146,6 +146,7 @@
 # 20220424/bie: clean query string from URI in response if refresh_delay is given (e.g. logout)
 # 20230923/bie: set counter to 0 in case neither 'counter' nor 'f_cnt' is set
 # 20240117/bie: add support for letterbox-sensor-v2
+# 20240118/bie: cosmetic extension of the "details" button
 #
 # TODO:
 # - lock around file writes
@@ -420,6 +421,7 @@ $translations{'Graphics'}->{'de'} = "Grafik";
 $translations{'hrs'}->{'de'} = "Std";
 $translations{'mins'}->{'de'} = "Min";
 $translations{'days'}->{'de'} = "Tage";
+$translations{'More'}->{'de'} = "Mehr";
 
 
 ####################
@@ -1281,7 +1283,7 @@ sub letter($) {
   my $toggle_color;
 
   my $button_size   = "width:" . $config{'button.width'} . "px;height:" . $config{'button.height'} . "px;";
-  my $button_size08 = "width:" . int($config{'button.width'} * 0.8) . "px;height:" . $config{'button.height'} . "px;";
+  my $button_size09 = "width:" . int($config{'button.width'} * 0.9) . "px;height:" . $config{'button.height'} . "px;";
   my $button_size14 = "width:" . int($config{'button.width'} * 1.4) . "px;height:" . $config{'button.height'} . "px;";
 
   ## button row #1
@@ -1332,7 +1334,12 @@ sub letter($) {
   };
   $response .= "  <td>\n";
   $response .= "   <form method=\"get\">\n";
-  $response .= "    <input type=\"submit\" value=\"Details\" style=\"background-color:" . $toggle_color . ";" . $button_size08 . "\">\n";
+  $response .= "    <input type=\"submit\" value=\"";
+  if ($querystring{'details'} eq "l1") {
+    $response .= translate("More") . " ";
+  };
+  $response .= "Details\" style=\"background-color:" . $toggle_color . ";" . $button_size09 . "\">\n";
+
   for my $key (sort keys %$querystring_copy) {
     $response .= "    <input type=\"text\" name=\"" . $key . "\" value=\"" . $querystring_copy->{$key} . "\" hidden>\n";
   };
