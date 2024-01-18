@@ -692,7 +692,7 @@ sub req_post() {
   };
   if (!defined $payload->{'tempC'}) {
     logging("POST/payload 'temp' preset to 0 (missing support in letterbox-sensor-v2)") if ($config{'debug'} > 1);
-    $payload->{'tempC'} = 0 ;
+    $payload->{'tempC'} = 0;
   };
 
   for my $key (keys %payload_validator) {
