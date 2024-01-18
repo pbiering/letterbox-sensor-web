@@ -700,6 +700,8 @@ sub req_post() {
       if ($payload_validator{$key}->{'required'} == 1) {
         response(500, "unsupported POST data", "", "POST request does contain valid JSON but required payload is missing '$key'");
         exit;
+      } else {
+        continue;
       };
     };
 
