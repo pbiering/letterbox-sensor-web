@@ -183,10 +183,10 @@ sub notifyDbusSignal_store_data($$$) {
       if ($status =~ /^(filled)$/o) {
         $icon = "📬 ";
       } elsif ($status =~ /^(emptied)$/o) {
-        $icon = "📫 ";
+        $icon = "📪 ";
       };
 
-      my $message = translate("letterbox") . ": " . $icon;
+      my $message = translate("letterbox") . " " . $icon;
       if (defined $config {"alias." . $dev_id}) {
         $message .= $config {"alias." . $dev_id};
       } else {
