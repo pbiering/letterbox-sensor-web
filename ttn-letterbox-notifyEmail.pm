@@ -2,7 +2,7 @@
 #
 # TheThingsNetwork HTTP letter box sensor notification via E-Mail
 #
-# (P) & (C) 2021-2022 Dr. Peter Bieringer <pb@bieringer.de>
+# (P) & (C) 2021-2024 Dr. Peter Bieringer <pb@bieringer.de>
 #
 # License: GPLv3
 #
@@ -34,12 +34,14 @@
 # 20211030/bie: add support for v3 API
 # 20220218/bie: remove support of debug option by environment
 # 20220421/bie: return earlier from notifyEmail_init when not enabled
+# 20240119/bie: add support for device alias, cosmetics
 #
 # TODO: implement faster mail delivery methods like "mailx"
 
 use strict;
 use warnings;
 use utf8;
+use Encode;
 
 require MIME::Lite;
 
@@ -62,7 +64,6 @@ $hooks{'notifyEmail'}->{'init'} = \&notifyEmail_init;
 $hooks{'notifyEmail'}->{'store_data'} = \&notifyEmail_store_data;
 
 ## translations
-$translations{'boxstatus'}->{'de'} = "Briefkasten-Status";
 $translations{'emptied'}->{'de'} = "GELEERT";
 $translations{'filled'}->{'de'} = "GEFÜLLT";
 $translations{'at'}->{'de'} = "am";
@@ -155,7 +156,30 @@ sub notifyEmail_store_data($$$) {
         $language =~ s/^;//o; # remove separator
       };
 
-      my $subject = translate("boxstatus") . ": " . $dev_id . " " . translate($status) . " " . translate("at") . " " . strftime("%Y-%m-%d %H:%M:%S %Z", localtime(str2time($timeReceived)));
+      my $icon = "";
+      if ($status =~ /^(filled)$/o) {
+        $icon = "📬 ";
+      } elsif ($status =~ /^(emptied)$/o) {
+        $icon = "📪 ";
+      };
+
+      my $subject = translate("letterbox") . " ";
+      $subject .= $icon;
+      if (defined $config {"alias." . $dev_id}) {
+        $subject .= $config {"alias." . $dev_id};
+      } else {
+        $subject .= $dev_id;
+      };
+      $subject .= " " . translate($status) . " " . translate("at") . " " . strftime("%Y-%m-%d %H:%M:%S %Z", localtime(str2time($timeReceived)));
+
+      my $data;
+      if (defined $config {"alias." . $dev_id}) {
+        $data .= "Sensor: " . $config {"alias." . $dev_id} . " (" . $dev_id . ")\n";
+      } else {
+        $data .= "Sensor: " . $dev_id . "\n";
+      }
+      $data .= translate("boxstatus") . ": " . translate($status) . "\n";
+      $data .= translate("at") . ": " . strftime("%Y-%m-%d %H:%M:%S %Z", localtime(str2time($timeReceived))) . "\n";
 
       logging("notifyEmail/store_data: send notification: $dev_id/$status/$receiver") if defined $config{'notifyEmail.debug'};
 
@@ -168,8 +192,8 @@ sub notifyEmail_store_data($$$) {
         my $msg = MIME::Lite->new(
           From     => $config{'notifyEmail.sender'},
           To       => $recipient,
-          Subject  => $subject,
-          Data     => $subject,
+          Subject  => encode("MIME-Header", $subject),
+          Data     => $data,
           Encoding => 'base64',
         );
 
