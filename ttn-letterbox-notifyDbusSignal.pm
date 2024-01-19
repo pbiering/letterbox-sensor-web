@@ -47,6 +47,7 @@
 # 20220421/bie: return earlier from notifyDbusSignal_init when not enabled
 # 20220424/bie: use hardcoded binary /usr/bin/dbus-send to avoid insecure $ENV{PATH} in tainted mode
 # 20240117/bie: expand and suppress "no related entry found" in case of disabled debug
+# 20240119/bie: add support for device alias, cosmetics
 
 use strict;
 use warnings;
@@ -71,7 +72,6 @@ $hooks{'notifyDbusSignal'}->{'init'} = \&notifyDbusSignal_init;
 $hooks{'notifyDbusSignal'}->{'store_data'} = \&notifyDbusSignal_store_data;
 
 ## translations
-$translations{'boxstatus'}->{'de'} = "Briefkasten-Status";
 $translations{'emptied'}->{'de'} = "GELEERT";
 $translations{'filled'}->{'de'} = "GEFÜLLT";
 $translations{'at'}->{'de'} = "am";
@@ -186,7 +186,13 @@ sub notifyDbusSignal_store_data($$$) {
         $icon = "📫 ";
       };
 
-      my $message = translate("boxstatus") . ": " . $icon . $dev_id . " " . translate($status) . " " . translate("at") . " " . strftime("%Y-%m-%d %H:%M:%S %Z", localtime(str2time($timeReceived)));
+      my $message = translate("letterbox") . ": " . $icon;
+      if (defined $config {"alias." . $dev_id}) {
+        $message .= $config {"alias." . $dev_id};
+      } else {
+        $message .= $dev_id
+      };
+      $message .= " " . translate($status) . " " . translate("at") . " " . strftime("%Y-%m-%d %H:%M:%S %Z", localtime(str2time($timeReceived)));
 
       logging("notifyDbusSignal/store_data: send notification: $dev_id/$status/$receiver") if defined $config{'notifyDbusSignal.debug'};
 
