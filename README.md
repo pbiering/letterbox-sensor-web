@@ -120,7 +120,9 @@ Applications → Add application
 Payload Formaters → Uplink
 - Formatter Type: Javascript
 - Payload Format: Custom
-- Decoder: -> take from `payload.formatter.uplink-v3.txt`
+- Decoder: -> take from `misc/payload.decoder.txt`
+  - https://github.com/hierle/letterbox-sensor
+  - https://github.com/hierle/letterbox-sensor-v2
 
 ### Integration
 
