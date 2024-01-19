@@ -53,6 +53,7 @@
 #     - default: 45
 #   - delta.crit=<minutes>
 #     - default: 90
+#   - alias.<dev_id>="Alias Name"
 #
 # Access control
 #   - CGI honors for POST requests X-TTN-AUTH header which can be configured manually on TTN controller side
@@ -147,6 +148,7 @@
 # 20230923/bie: set counter to 0 in case neither 'counter' nor 'f_cnt' is set
 # 20240117/bie: add support for letterbox-sensor-v2
 # 20240118/bie: cosmetic extension of the "details" button
+# 20240119/bie: add support for device alias, cosmetic extensions
 #
 # TODO:
 # - lock around file writes
@@ -324,7 +326,10 @@ if (-e $conffile) {
   open CONFF, '<', $conffile or die;
   while (my $line = <CONFF>) {
     chomp($line);
-    if ($line =~ /^([A-Za-z0-9-\.]+)=(.*)$/o) {
+    if ($line =~ /^([A-Za-z0-9-\.]+)=([^"]*)$/o) {
+      $config{$1} = $2;
+      # strip quotes
+    } elsif ($line =~ /^([A-Za-z0-9-\.]+)="([^"]*)"$/o) {
       $config{$1} = $2;
     };
   };
@@ -406,6 +411,8 @@ $translations{'deltaLastReceived'}->{'de'} = "Zeit seit letzter Übermittlung";
 $translations{'timeLastReceived'}->{'de'} = "Uhrzeit der letzten Übermittlung";
 $translations{'timeLastFilled'}->{'de'} = "Uhrzeit der letzten Füllung";
 $translations{'timeLastEmptied'}->{'de'} = "Uhrzeit der letzten Leerung";
+$translations{'letterbox'}->{'de'} = "Briefkasten";
+$translations{'boxstatus'}->{'de'} = "Briefkasten-Status";
 $translations{'EMPTY'}->{'de'} = "LEER";
 $translations{'EMPTIED'}->{'de'} = "GELEERT";
 $translations{'FILLED'}->{'de'} = "GEFÜLLT";
@@ -1414,17 +1421,25 @@ sub letter($) {
 
   $response .= " <tr>";
 
-  $response .= "<th></th>";
+  $response .= "<th align=\"left\">" . translate("letterbox") . "</th>";
 
   # row 1
   for my $dev_id (sort keys %dev_hash) {
-    $response .= "<th align=\"center\"><font size=+1><b>". $dev_id . "</b></font></th>";
+    $response .= "<th align=\"center\">";
+    if (defined $config {"alias." . $dev_id}) {
+      $response .= "<font size=+1><b>". $config {"alias." . $dev_id} . "</b></font>";
+      $response .= "<br />";
+      $response .= "<font size=-1>". $dev_id . "</font>";
+    } else {
+      $response .= "<font size=+1><b>". $dev_id . "</b></font>";
+    };
+    $response .= "</th>";
   };
   $response .= "</tr>\n";
 
   # row 2
   $response .= " <tr>";
-  $response .= "<td></td>";
+  $response .= "<td>" . translate("boxstatus") . "</td>";
   for my $dev_id (sort keys %dev_hash) {
     if (defined $bg_colors{$dev_hash{$dev_id}->{'box'}}) {
       # set bgcolor if defined
