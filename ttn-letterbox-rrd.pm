@@ -59,6 +59,7 @@
 # 20220404/bie: display RRDs for 'rssi', 'snr', 'voltage', 'tempC', 'sensor-zoom-empty' only in case of "details" != "off"
 # 20220415/bie: display RRDs for 'rssi', 'snr', 'tempC' only in case of "details" != "l1" || "off"
 # 20240117/bie: add support for letterbox-sensor-v2, add support for rrd.sensor-zoom-empty.dev.<device>.(min|max)
+# 20240120/bie: fix y-grid for sensor-zoom-empty
 
 use strict;
 use warnings;
@@ -561,7 +562,9 @@ sub rrd_get_graphics($$$) {
 
           push @rrd_opts, "--lower-limit=" . $min;
           push @rrd_opts, "--upper-limit=" . $max;
-          push @rrd_opts, "--y-grid=1:" . int(($max - $min) / 5);
+          my $y_grid_1 = int(($max - $min) / 20);
+          $y_grid_1 = 1 if ($y_grid_1 == 0);
+          push @rrd_opts, "--y-grid=" . $y_grid_1 . ":5";
           push @rrd_opts, "--rigid";
         };
 
