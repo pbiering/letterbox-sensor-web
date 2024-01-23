@@ -149,6 +149,7 @@
 # 20240117/bie: add support for letterbox-sensor-v2
 # 20240118/bie: cosmetic extension of the "details" button
 # 20240119/bie: add support for device alias, cosmetic extensions
+# 20240123/bie: add support for letterbox-sensor-v2/extended-payload "datarate","txpower","changed","period"
 #
 # TODO:
 # - lock around file writes
@@ -256,6 +257,10 @@ my %payload_validator = (
   'tempC'     => { 'pattern' => '[0-9-]+', 'required' => 1 }, # n/a in v2 but will be filled with dummy value
   'threshold' => { 'pattern' => '[0-9]+' , 'required' => 1 }, # mandatory (v1+v2)
   'voltage'   => { 'pattern' => '[0-9.]+', 'required' => 1 }, # mandatory (v1+v2)
+  'txpower'   => { 'pattern' => '[0-7]'  , 'required' => 0 }, # optional (v2 "extrainfo")
+  'datarate'  => { 'pattern' => '[0-7]'  , 'required' => 0 }, # optional (v2 "extrainfo")
+  'changed'   => { 'pattern' => '[0-1]'  , 'required' => 0 }, # optional (v2 "extrainfo")
+  'period'    => { 'pattern' => '[0-9]+' , 'required' => 0 }, # optional (v2 "extrainfo")
 );
 
 # details depending on detail level
@@ -399,7 +404,7 @@ my $filledfile_template = "$datadir/ttn.DEV_ID.filled.time.status";
 my $emptiedfile_template = "$datadir/ttn.DEV_ID.emptied.time.status";
 
 # list and order of info rows in output
-my @info_array = ('timeNow', 'deltaLastChanged', 'deltaLastReceived', 'timeLastReceived', 'timeLastFilled', 'timeLastEmptied', 'sensor', 'threshold', 'tempC', 'voltage', 'rssi', 'snr', 'counter', 'hardwareSerial');
+my @info_array = ('timeNow', 'deltaLastChanged', 'deltaLastReceived', 'timeLastReceived', 'timeLastFilled', 'timeLastEmptied', 'sensor', 'threshold', 'tempC', 'voltage', 'rssi', 'snr', 'counter', 'txpower', 'datarate', 'changed', 'period', 'hardwareSerial');
 
 # definitions
 my %dev_hash;
@@ -413,6 +418,7 @@ $translations{'timeLastFilled'}->{'de'} = "Uhrzeit der letzten Füllung";
 $translations{'timeLastEmptied'}->{'de'} = "Uhrzeit der letzten Leerung";
 $translations{'letterbox'}->{'de'} = "Briefkasten";
 $translations{'boxstatus'}->{'de'} = "Briefkasten-Status";
+$translations{'status'}->{'de'} = "Status";
 $translations{'EMPTY'}->{'de'} = "LEER";
 $translations{'EMPTIED'}->{'de'} = "GELEERT";
 $translations{'FILLED'}->{'de'} = "GEFÜLLT";
@@ -1075,6 +1081,11 @@ sub req_get() {
     my $threshold = $payload_last->{'threshold'};
     my $voltage = $payload_last->{'voltage'};
     my $tempC = $payload_last->{'tempC'};
+    my $period = $payload_last->{'period'};
+    my $txpower = $payload_last->{'txpower'};
+    my $datarate = $payload_last->{'datarate'};
+    my $changed = $payload_last->{'changed'};
+    my $period = $payload_last->{'period'};
 
     my $metadata_last;
     $metadata_last = $content->{'uplink_message'}->{'rx_metadata'}[0]; # v3 (default)
@@ -1141,6 +1152,10 @@ sub req_get() {
     $dev_hash{$dev_id}->{'info'}->{'counter'} = $content->{'counter'} if defined ($content->{'counter'}); # v2
     $dev_hash{$dev_id}->{'info'}->{'counter'} = $content->{'uplink_message'}->{'f_cnt'} if defined ($content->{'uplink_message'}->{'f_cnt'}); # v3
     $dev_hash{$dev_id}->{'info'}->{'hardwareSerial'} = $hardware_serial;
+    $dev_hash{$dev_id}->{'info'}->{'txpower'} = $txpower;
+    $dev_hash{$dev_id}->{'info'}->{'datarate'} = $datarate;
+    $dev_hash{$dev_id}->{'info'}->{'changed'} = $changed;
+    $dev_hash{$dev_id}->{'info'}->{'period'} = $period;
     # mask hardware_serial
     $dev_hash{$dev_id}->{'info'}->{'hardwareSerial'} =~ s/(..)....(..)/$1****$2/g;
 
@@ -1439,7 +1454,7 @@ sub letter($) {
 
   # row 2
   $response .= " <tr>";
-  $response .= "<td>" . translate("boxstatus") . "</td>";
+  $response .= "<td>" . translate("status") . "</td>";
   for my $dev_id (sort keys %dev_hash) {
     if (defined $bg_colors{$dev_hash{$dev_id}->{'box'}}) {
       # set bgcolor if defined
