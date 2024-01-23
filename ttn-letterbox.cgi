@@ -264,7 +264,7 @@ my %payload_validator = (
 );
 
 # details depending on detail level
-my @details_on = ("rssi", "snr", "tempC", "counter", "hardwareSerial"); # only displayed in case of "details" == "on"
+my @details_on = ("rssi", "snr", "tempC", "counter", "txpower", "datarate", "period", "changed", "hardwareSerial"); # only displayed in case of "details" == "on"
 my @details_l1 = ("voltage", "threshold"); # only displayed in case of "details" == "l1" || "on"
 
 
