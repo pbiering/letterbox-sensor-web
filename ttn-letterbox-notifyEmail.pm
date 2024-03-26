@@ -35,6 +35,7 @@
 # 20220218/bie: remove support of debug option by environment
 # 20220421/bie: return earlier from notifyEmail_init when not enabled
 # 20240119/bie: add support for device alias, cosmetics
+# 20240326/bie: add Unicode chars for clock and part of day, remove seconds from timestamp
 #
 # TODO: implement faster mail delivery methods like "mailx"
 
@@ -72,6 +73,22 @@ $translations{'At'}->{'de'} = "Am";
 ## active status (= passed all validity checks)
 my $notifyEmail_active = 0;
 my $notifyEmail_enable = 0;
+
+# clock icons 0000 -> 11:30
+my @icon_clock = (
+  "🕛", "🕧", "🕐", "🕜", "🕑", "🕝",
+  "🕒", "🕞", "🕓", "🕟", "🕔", "🕠",
+  "🕕", "🕡", "🕖", "🕢", "🕗", "🕣",
+  "🕘", "🕤", "🕙", "🕥", "🕚", "🕦"
+);
+
+# day icon
+my @icon_day = (
+  "🌆" , # night
+  "🌅" , # sunrise
+  "🌞" , # day
+  "🌇" , # sunset
+);
 
 
 ############
@@ -163,14 +180,29 @@ sub notifyEmail_store_data($$$) {
         $icon = "📪 ";
       };
 
+      # time and day icons
+      my $hour   = int(strftime("%H", localtime(str2time($timeReceived))));
+      my $minute = int(strftime("%M", localtime(str2time($timeReceived))));
+
+      my $index_day = 0;
+      $index_day++    if ($hour >= 6);
+      $index_day++    if ($hour >= 8);
+      $index_day++    if ($hour >= 18);
+      $index_day = 0  if ($hour >= 20);
+
+      $hour -= 12 if ($hour >= 12);
+      my $index_clock = ($hour * 60 + $minute) / 30; # 0-23
+
+      $icon .= $icon_day[$index_day] . $icon_clock[$index_clock];
+
       my $subject = translate("letterbox") . " ";
-      $subject .= $icon;
+      $subject .= $icon . " ";
       if (defined $config {"alias." . $dev_id}) {
         $subject .= $config {"alias." . $dev_id};
       } else {
         $subject .= $dev_id;
       };
-      $subject .= " " . translate($status) . " " . translate("at") . " " . strftime("%Y-%m-%d %H:%M:%S %Z", localtime(str2time($timeReceived)));
+      $subject .= " " . translate($status) . " " . translate("at") . " " . strftime("%Y-%m-%d %H:%M %Z", localtime(str2time($timeReceived)));
 
       my $data;
       if (defined $config {"alias." . $dev_id}) {
