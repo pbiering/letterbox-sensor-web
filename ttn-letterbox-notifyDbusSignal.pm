@@ -48,6 +48,7 @@
 # 20220424/bie: use hardcoded binary /usr/bin/dbus-send to avoid insecure $ENV{PATH} in tainted mode
 # 20240117/bie: expand and suppress "no related entry found" in case of disabled debug
 # 20240119/bie: add support for device alias, cosmetics
+# 20240324/bie: add Unicode chars for clock and part of day, remove seconds from timestamp
 
 use strict;
 use warnings;
@@ -79,6 +80,23 @@ $translations{'at'}->{'de'} = "am";
 ## active status (= passed all validity checks)
 my $notifyDbusSignal_active = 0;
 my $notifyDbusSignal_enable = 0;
+
+## icons
+# clock icons 0000 -> 11:30
+my @icon_clock = (
+  "🕛", "🕧", "🕐", "🕜", "🕑", "🕝",
+  "🕒", "🕞", "🕓", "🕟", "🕔", "🕠",
+  "🕕", "🕡", "🕖", "🕢", "🕗", "🕣",
+  "🕘", "🕤", "🕙", "🕥", "🕚", "🕦"
+);
+
+# day icon
+my @icon_day = (
+  "🌆" , # night
+  "🌅" , # sunrise
+  "🌞" , # day
+  "🌇" , # sunset
+);
 
 
 ############
@@ -186,13 +204,28 @@ sub notifyDbusSignal_store_data($$$) {
         $icon = "📪 ";
       };
 
-      my $message = translate("letterbox") . " " . $icon;
+      # time and day icons
+      my $hour   = int(strftime("%H", localtime(str2time($timeReceived))));
+      my $minute = int(strftime("%M", localtime(str2time($timeReceived))));
+
+      my $index_day = 0;
+      $index_day++    if ($hour >= 6);
+      $index_day++    if ($hour >= 8);
+      $index_day++    if ($hour >= 18);
+      $index_day = 0  if ($hour >= 20);
+
+      $hour -= 12 if ($hour >= 12);
+      my $index_clock = ($hour * 60 + $minute) / 30; # 0-23
+
+      $icon .= $icon_day[$index_day] . $icon_clock[$index_clock];
+
+      my $message = translate("letterbox") . " " . $icon . " ";
       if (defined $config {"alias." . $dev_id}) {
         $message .= $config {"alias." . $dev_id};
       } else {
         $message .= $dev_id
       };
-      $message .= " " . translate($status) . " " . translate("at") . " " . strftime("%Y-%m-%d %H:%M:%S %Z", localtime(str2time($timeReceived)));
+      $message .= " " . translate($status) . " " . translate("at") . " " . strftime("%Y-%m-%d %H:%M %Z", localtime(str2time($timeReceived)));
 
       logging("notifyDbusSignal/store_data: send notification: $dev_id/$status/$receiver") if defined $config{'notifyDbusSignal.debug'};
 
