@@ -2,7 +2,7 @@
 #
 # TheThingsNetwork HTTP letter box user authentication extension
 #
-# (P) & (C) 2019-2022 Dr. Peter Bieringer <pb@bieringer.de>
+# (P) & (C) 2019-2024 Dr. Peter Bieringer <pb@bieringer.de>
 #
 # License: GPLv3
 #
@@ -80,6 +80,7 @@
 # 20220418/bie: add CAPTCHA support with external services (Google, hCaptcha, FriendlyCaptcha)
 # 20220422/bie: add CAPTCHA support with internal GD::SecurityImage, replace hardcoded module requirement to per CAPTCHA service
 # 20220424/bie: cosmetics/minor improvements/alignments
+# 20241130/bie: define CAPTCHA validation timeout to 20 sec (default 180, which is not matching Apache Timeout default of 60)
 
 use strict;
 use warnings;
@@ -319,7 +320,7 @@ sub userauth_check_captcha_external($$$) {
   my $cookie_data_h = $_[1];
   my $response_content = $_[2];
 
-  my $ua = LWP::UserAgent->new;
+  my $ua = LWP::UserAgent->new(timeout => 20);
   my $url = $captcha{$config{'userauth.captcha.service'}}->{'VerifyURL'};
   my $req = HTTP::Request->new(POST => $url);
   my %form;
